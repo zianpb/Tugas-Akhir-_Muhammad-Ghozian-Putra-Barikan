@@ -286,7 +286,7 @@ class MoodMealGUI:
         )
         self.lbl_status.pack(side="bottom", fill="x")
 
-        # initial update undo/redo button state
+      
         self.update_undo_redo_buttons()
 
     # -----------------------------------------------------
@@ -343,13 +343,13 @@ class MoodMealGUI:
 
     def proses_makan(self):
         mkn = self.list_rekomendasi[self.index_sekarang]
-        # panggil tracker untuk makan (tracker harus meng-handle history untuk undo/redo)
+     
         try:
             self.tracker.makan(mkn)
         except Exception as e:
-            # fallback: kalau tracker versi lama tanpa support undo, tetap tambahkan kalori
+      
             try:
-                # asumsikan ada atribut private __current_kalori? jangan akses private; jadi kita skip
+              
                 pass
             except Exception:
                 pass
@@ -357,7 +357,7 @@ class MoodMealGUI:
         status = self.tracker.get_status()
         self.lbl_status.config(text=status)
 
-        # update tombol undo/redo sesuai state tracker
+      
         self.update_undo_redo_buttons()
 
         if "OVERLIMIT" in status:
@@ -423,7 +423,7 @@ class MoodMealGUI:
             except Exception:
                 state_redo = "disabled"
 
-        # apply states (buttons may not exist yet if called early)
+       
         try:
             self.btn_undo.config(state=state_undo)
         except Exception:
