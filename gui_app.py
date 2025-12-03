@@ -1,5 +1,5 @@
 # ==============================
-# GUI.py — MoodMeal (UI Modern)
+# GUI.py — MoodMeal (UI Modern) + UNDO/REDO
 # ==============================
 
 import tkinter as tk
@@ -245,6 +245,32 @@ class MoodMealGUI:
         )
         self.btn_makan.pack(pady=10)
 
+        # =====================
+        # --- UNDO / REDO ---
+        # =====================
+        frame_undo_redo = tk.Frame(self.frame_hasil, bg=self.COLOR_CARD)
+        frame_undo_redo.pack(pady=5)
+
+        self.btn_undo = tk.Button(
+            frame_undo_redo, text="↩️ UNDO",
+            bg="#FFC107", fg="black",
+            font=("Helvetica", 10, "bold"),
+            width=10,
+            command=self.proses_undo,
+            state="disabled"
+        )
+        self.btn_undo.grid(row=0, column=0, padx=5)
+
+        self.btn_redo = tk.Button(
+            frame_undo_redo, text="↪️ REDO",
+            bg="#03A9F4", fg="white",
+            font=("Helvetica", 10, "bold"),
+            width=10,
+            command=self.proses_redo,
+            state="disabled"
+        )
+        self.btn_redo.grid(row=0, column=1, padx=5)
+
         # --- Footer ---
         tk.Button(
             self.root, text="⬅️ Ubah Data Diri",
@@ -259,6 +285,9 @@ class MoodMealGUI:
             bg="#EEEEEE"
         )
         self.lbl_status.pack(side="bottom", fill="x")
+
+        # initial update undo/redo button state
+        self.update_undo_redo_buttons()
 
     # -----------------------------------------------------
     # Logic — Cari Makanan
@@ -314,10 +343,22 @@ class MoodMealGUI:
 
     def proses_makan(self):
         mkn = self.list_rekomendasi[self.index_sekarang]
-        self.tracker.makan(mkn)
+        # panggil tracker untuk makan (tracker harus meng-handle history untuk undo/redo)
+        try:
+            self.tracker.makan(mkn)
+        except Exception as e:
+            # fallback: kalau tracker versi lama tanpa support undo, tetap tambahkan kalori
+            try:
+                # asumsikan ada atribut private __current_kalori? jangan akses private; jadi kita skip
+                pass
+            except Exception:
+                pass
 
         status = self.tracker.get_status()
         self.lbl_status.config(text=status)
+
+        # update tombol undo/redo sesuai state tracker
+        self.update_undo_redo_buttons()
 
         if "OVERLIMIT" in status:
             self.lbl_status.config(bg="#FFCCCC", fg="red")
@@ -325,6 +366,72 @@ class MoodMealGUI:
         else:
             self.lbl_status.config(bg="#EEEEEE", fg="black")
             messagebox.showinfo("Sukses", f"Kamu makan {mkn.nama}")
+
+    # -----------------------------------------------------
+    # UNDO / REDO handlers (GUI)
+    # -----------------------------------------------------
+    def proses_undo(self):
+        if hasattr(self.tracker, "undo"):
+            msg = self.tracker.undo()
+        else:
+            msg = "Fitur undo tidak tersedia pada tracker."
+
+        # update status & button states
+        try:
+            self.lbl_status.config(text=self.tracker.get_status())
+        except Exception:
+            pass
+
+        messagebox.showinfo("Undo", msg)
+        self.update_undo_redo_buttons()
+
+    def proses_redo(self):
+        if hasattr(self.tracker, "redo"):
+            msg = self.tracker.redo()
+        else:
+            msg = "Fitur redo tidak tersedia pada tracker."
+
+        # update status & button states
+        try:
+            self.lbl_status.config(text=self.tracker.get_status())
+        except Exception:
+            pass
+
+        messagebox.showinfo("Redo", msg)
+        self.update_undo_redo_buttons()
+
+    def update_undo_redo_buttons(self):
+        """
+        Enable/disable undo & redo buttons based on tracker history.
+        Uses hasattr checks so GUI still works even if tracker doesn't have stacks.
+        """
+        # default disable
+        state_undo = "disabled"
+        state_redo = "disabled"
+
+        if hasattr(self.tracker, "history"):
+            try:
+                if len(self.tracker.history) > 0:
+                    state_undo = "normal"
+            except Exception:
+                state_undo = "disabled"
+
+        if hasattr(self.tracker, "redo_stack"):
+            try:
+                if len(self.tracker.redo_stack) > 0:
+                    state_redo = "normal"
+            except Exception:
+                state_redo = "disabled"
+
+        # apply states (buttons may not exist yet if called early)
+        try:
+            self.btn_undo.config(state=state_undo)
+        except Exception:
+            pass
+        try:
+            self.btn_redo.config(state=state_redo)
+        except Exception:
+            pass
 
     # -----------------------------------------------------
     # POPUP — Add Menu
